@@ -1,0 +1,3 @@
+-- parse lambda calculus
+-- legal syntax:  (\x . x) 1
+--                (\x y . y) 1 2
