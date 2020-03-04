@@ -1,27 +1,34 @@
-
---type Name = String
-
-data Expr
-  = Var String
-  | Apply Expr Expr
-  | Lamda String Expr
-  deriving (Eq, Show)
-
 -- const = λxy.x
 -- in haskell:
 -- const = \x y -> x
 
-type Closure = Closure String Expr
+import qualified Data.Map as Map
 
--- need to define some kind of environment
+--type Env k v = [(k,v)]
+-- can use lookup, can extend with cons
+
+type Env = Map.Map String Val
+
+data Closure = Closure String Expr Env
+
+data Val
+  = IntVal Integer
+  | ClosVal Closure
+
+data Expr
+  = Var String
+  | Apply Expr Expr
+  | Lambda String Expr
+  deriving (Eq, Show)
+
 
 -- lambda returns a Closure
 
-eval :: Expr Env -> Integer
-eval expr = case expr of
+eval :: Expr -> Env -> Val
+eval expr env = case expr of
 
-  Var x e -> x  -- look up the string x in the env and return that value
+  Var x -> IntVal 0  -- look up the string x in the env and return that value
 
-  Apply a b e -> 0
+  Apply e1 e2 -> IntVal 0
 
-  Lambda x a e -> Closure x a
+  Lambda x e -> ClosVal (Closure x e env)

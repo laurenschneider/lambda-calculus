@@ -10,10 +10,19 @@ three terms:
 
 questions to ask in office hours:
 
+  what should legal syntax be?
+
   basic structure will include a parser and a recursive evaluation function.
   the evaluation function needs to call substitution ??
-  need to define an environment. does the closure piece need to be separate? 
+  need to define an environment. does the closure piece need to be separate?
 
   there's not really arithmetic operations in a lambda calc??? just substitution????
 
   eventually will have some tests
+
+create a closure, save the env it was in
+
+  eval (app e1 e2) p =
+    case eval e1 p of
+        closureval (closure x e1' p') -> eval e1' in env(p'+(x-> eval e2 p))
+        integer val -> error
