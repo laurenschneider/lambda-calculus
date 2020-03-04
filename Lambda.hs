@@ -3,6 +3,7 @@
 -- const = \x y -> x
 
 import qualified Data.Map as Map
+import Data.Maybe as Maybe
 
 --type Env k v = [(k,v)]
 -- can use lookup, can extend with cons
@@ -27,7 +28,8 @@ data Expr
 eval :: Expr -> Env -> Val
 eval expr env = case expr of
 
-  Var x -> IntVal 0  -- look up the string x in the env and return that value
+  -- look up the string x in the env and return that value
+  Var x -> Maybe.fromJust (Map.lookup x env)
 
   Apply e1 e2 -> IntVal 0
 
