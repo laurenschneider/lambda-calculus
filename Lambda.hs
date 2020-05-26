@@ -38,7 +38,7 @@ eval expr env = case expr of
 
   Apply e1 e2 -> apply (eval e1 env) (eval e2 env)
 
--- lambda returns a Closure
+-- lambda returns a Closure 
   Lambda x e -> ClosVal x e env
 
 
@@ -83,6 +83,3 @@ evalShadow = eval appShadow emptyEnv
 rename = Lambda "y" (Lambda "x" (Var "y"))
 appRename = Apply (Apply rename (Var "y")) (Int 1111)
 evalRename = eval appRename emptyEnv
-
-
--- \ x. (\ y.y) z
