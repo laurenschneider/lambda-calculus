@@ -1,7 +1,8 @@
 
 import qualified Data.Map as Map
 import Data.Maybe as Maybe
-
+import Control.Monad.Except
+import Control.Monad.Reader
 
 type Env = Map.Map String Val
 
@@ -22,6 +23,7 @@ instance Show Val where
   show ClosVal{} = "closure"
 
 -- syntax
+
 data Expr
   = Var String
   | Int Integer
@@ -29,6 +31,43 @@ data Expr
   | Lambda String Expr
   deriving (Eq, Show)
 
+-- todo: add Bool as type
+data Type
+  = Nat
+  | Arrow Type Type
+  deriving (Eq, Show)
+
+data TypeError
+  = Mismatch Type Type
+  | NotFunction Type
+  -- | NotInScope String
+
+
+-- type checking
+
+type Check a = Except TypeError a    --(Reader [(String, Type)])
+
+check :: Expr -> Either TypeError Type
+check = runExcept . getType
+
+getType :: Expr -> Check Type
+getType expr = case expr of
+  Int a -> return Nat
+
+  Var x -> return Nat -- lookup Var x in env
+
+  Apply e1 e2 -> do
+    t1 <- getType e1
+    t2 <- getType e2
+    case t1 of
+      (Arrow x y) | x == t2 -> return y
+                  | otherwise -> throwError (Mismatch t2 x)
+      t -> throwError (NotFunction t)
+
+  Lambda x e -> return (Arrow Nat Nat)
+
+
+-- evaluate
 
 eval :: Expr -> Env -> Val
 eval expr env = case expr of
