@@ -28,43 +28,71 @@ data Expr
   = Var String
   | Int Integer
   | Apply Expr Expr
-  | Lambda String Expr
-  deriving (Eq, Show)
+  | Lambda String Type Expr
+  deriving (Eq)
+
+instance Show Expr where
+  show (Var x) = show x
+  show (Int i) = show i
+  show (Apply e1 e2) = "@ " ++ show e1 ++ " " ++ show e2
+  show (Lambda x t e) = "\\" ++ show x ++ ":" ++ show t ++ "." ++ show e
 
 -- todo: add Bool as type
 data Type
   = Nat
   | Arrow Type Type
-  deriving (Eq, Show)
+  deriving (Eq)
+
+instance Show Type where
+  show Nat = "Natural number"
+  show (Arrow t1 t2) = show t1 ++ " -> " ++ show t2
 
 data TypeError
   = Mismatch Type Type
   | NotFunction Type
-  -- | NotInScope String
+  | NotInScope String
+  deriving (Show)
 
 
 -- type checking
 
+type TypeEnv = Map.Map String Type
+
+emptyTypeEnv :: TypeEnv
+emptyTypeEnv = Map.empty
+
+extendTypeEnv :: TypeEnv -> String -> Type -> TypeEnv
+extendTypeEnv e k v = Map.insert k v e
+
 type Check a = Except TypeError a    --(Reader [(String, Type)])
 
-check :: Expr -> Either TypeError Type
-check = runExcept . getType
+check :: TypeEnv -> Expr -> Either TypeError Type
+check e x = runExcept ( (getType e x) )
 
-getType :: Expr -> Check Type
-getType expr = case expr of
+getType :: TypeEnv -> Expr -> Check Type
+getType env expr = case expr of
   Int a -> return Nat
 
-  Var x -> return Nat -- lookup Var x in env
+  Var x -> checkVar env x
 
   Apply e1 e2 -> do
-    t1 <- getType e1
-    t2 <- getType e2
+    t1 <- getType env e1
+    t2 <- getType env e2
     case t1 of
-      (Arrow x y) | x == t2 -> return y
-                  | otherwise -> throwError (Mismatch t2 x)
+      Arrow x y -> checkArrow x y t2
       t -> throwError (NotFunction t)
 
-  Lambda x e -> return (Arrow Nat Nat)
+  Lambda x t e -> do
+    res <- getType (extendTypeEnv env x t) e
+    return (Arrow t res)
+
+checkVar :: TypeEnv -> String -> Check Type
+checkVar e x = case Map.lookup x e of
+  Just a -> return a
+  Nothing -> throwError (NotInScope x)
+
+checkArrow :: Type -> Type -> Type -> Check Type
+checkArrow a1 a2 t = if a1 == t then return a2 else throwError (Mismatch a1 t)
 
 
 -- evaluate
@@ -79,7 +107,7 @@ eval expr env = case expr of
   Apply e1 e2 -> apply (eval e1 env) (eval e2 env)
 
 -- lambda returns a Closure
-  Lambda x e -> ClosVal x e env
+  Lambda x _ e -> ClosVal x e env
 
 
 apply :: Val -> Val -> Val
@@ -91,35 +119,13 @@ evalVar _ (Just a) = a
 evalVar x Nothing = x
 
 
---------------------
--- testing evaluate
---------------------
+-- test some types
+
+x = Var "x"
+checkForError = check emptyTypeEnv x
+newEnv = extendTypeEnv emptyTypeEnv "x" Nat
+checkForNat = check newEnv x
 
 -- ID  \ x.x 3 = 3
-xId = Lambda "x" (Var "x")
-applyId = Apply xId (Int 3)
-evalId = eval applyId emptyEnv
-
-
--- Fst:  \ xy.x 1111 2 = 1111
-first = Lambda "y" (Lambda "x" (Var "y"))
-appFst = Apply (Apply first (Int 1111)) (Int 2)
-evalFst = eval appFst emptyEnv
-
-
--- Snd  \ xy.y 1111 2 = 2
-second = Lambda "y" (Lambda "x" (Var "x"))
-appSnd = Apply (Apply second (Int 1111)) (Int 2)
-evalSnd = eval appSnd emptyEnv
-
-
--- shadowing \ xx.x 1111 2 = 2
-shadow = Lambda "x" (Lambda "x" (Var "x"))
-appShadow = Apply (Apply shadow (Int 1111)) (Int 2)
-evalShadow = eval appShadow emptyEnv
-
-
--- rename \ xy.x y 1111 = y
-rename = Lambda "y" (Lambda "x" (Var "y"))
-appRename = Apply (Apply rename (Var "y")) (Int 1111)
-evalRename = eval appRename emptyEnv
+xId = Lambda "x" Nat x
+checkForArr = check newEnv xId
