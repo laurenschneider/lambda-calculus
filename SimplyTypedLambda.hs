@@ -6,11 +6,7 @@ import Control.Monad.Reader
 
 type Env = Map.Map String Val
 
-emptyEnv :: Env
-emptyEnv = Map.empty
-
-extendEnv :: Env -> String -> Val -> Env
-extendEnv e k v = Map.insert k v e
+-- syntax
 
 data Val
   = IntVal Integer
@@ -21,8 +17,6 @@ instance Show Val where
   show (IntVal x) = show x
   show (VarVal x) = show x
   show ClosVal{} = "closure"
-
--- syntax
 
 data Expr
   = Var String
@@ -37,7 +31,6 @@ instance Show Expr where
   show (Apply e1 e2) = "@ " ++ show e1 ++ " " ++ show e2
   show (Lambda x t e) = "\\" ++ show x ++ ":" ++ show t ++ "." ++ show e
 
--- todo: add Bool as type
 data Type
   = Nat
   | Arrow Type Type
@@ -64,10 +57,10 @@ emptyTypeEnv = Map.empty
 extendTypeEnv :: TypeEnv -> String -> Type -> TypeEnv
 extendTypeEnv e k v = Map.insert k v e
 
-type Check a = Except TypeError a    --(Reader [(String, Type)])
+type Check a = Except TypeError a
 
 check :: TypeEnv -> Expr -> Either TypeError Type
-check e x = runExcept ( (getType e x) )
+check e x = runExcept (getType e x)
 
 getType :: TypeEnv -> Expr -> Check Type
 getType env expr = case expr of
@@ -97,6 +90,12 @@ checkArrow a1 a2 t = if a1 == t then return a2 else throwError (Mismatch a1 t)
 
 -- evaluate
 
+emptyEnv :: Env
+emptyEnv = Map.empty
+
+extendEnv :: Env -> String -> Val -> Env
+extendEnv e k v = Map.insert k v e
+
 eval :: Expr -> Env -> Val
 eval expr env = case expr of
   Int a -> IntVal a
@@ -106,7 +105,7 @@ eval expr env = case expr of
 
   Apply e1 e2 -> apply (eval e1 env) (eval e2 env)
 
--- lambda returns a Closure
+  -- lambda returns a Closure
   Lambda x _ e -> ClosVal x e env
 
 
@@ -119,13 +118,23 @@ evalVar _ (Just a) = a
 evalVar x Nothing = x
 
 
--- test some types
+-- examples: validate some types
 
 x = Var "x"
 checkForError = check emptyTypeEnv x
-newEnv = extendTypeEnv emptyTypeEnv "x" Nat
-checkForNat = check newEnv x
+xEnv = extendTypeEnv emptyTypeEnv "x" Nat
+checkForNat = check xEnv x
 
 -- ID  \ x.x 3 = 3
 xId = Lambda "x" Nat x
-checkForArr = check newEnv xId
+checkForArr = check xEnv xId
+appX = Apply xId (Int 2)
+checkAppX = check xEnv appX
+
+f = Lambda "f" (Arrow Nat Nat) x
+checkF = check xEnv f
+
+checkLit = check emptyTypeEnv (Int 2)
+
+appMismatch = Apply f (Int 2)
+checkMismatch = check xEnv appMismatch
